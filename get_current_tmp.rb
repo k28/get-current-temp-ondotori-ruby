@@ -40,25 +40,19 @@ def load_webstorage_settings()
   end
 end
 
-# 現在値データを取得します
-def get_current_data()
+# 任意のリクエストを実行して、結果を返します
+# 失敗した時にはnilを返します
+def request_to_server(uri_str, params, headers)
   begin
-    # 接続パラメータを読み込み
-    params = load_webstorage_settings()
-    if params.nil? then
-      return nil
-    end
 
-    uri = URI.parse(WEB_STORAGE_URI)
+    uri = URI.parse(uri_str)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = uri.scheme === "https"
-    headers = { "Content-Type" => "application/json", "X-HTTP-Method-Override" => "GET" }
     response = http.post(uri.path, params.to_json, headers)
 
     case response
     when Net::HTTPSuccess
-      json = response.body
-      return JSON.parse(json)
+      return response
     else
       puts [uri.to_s, response.value].join(" : ")
     end
@@ -71,17 +65,35 @@ def get_current_data()
     puts "Client Exception #{e}"
   rescue Net::HTTPServerException => e
     puts "Server Exception #{e}"
-  rescue Net::HTTPError => e
-    puts "Error #{e}"
   rescue Net::HTTPFatalError => e
     puts "Fatal Error #{e}"
   rescue Net::HTTPRetriableError => e
     puts "Retriable Error #{e}"
+  rescue Net::HTTPError => e
+    puts "Error #{e}"
   rescue => e
     puts [uri.to_s, e.class, e].join(" : ")
   end
 
  return nil
+
+end
+
+# 現在値データを取得します
+def get_current_data()
+  # 接続パラメータを読み込み
+  params = load_webstorage_settings()
+  if params.nil? then
+    return nil
+  end
+  headers = { "Content-Type" => "application/json", "X-HTTP-Method-Override" => "GET" }
+  response = request_to_server(WEB_STORAGE_URI, params, headers)
+  if response.nil? then
+    return nil
+  end
+
+  json = response.body
+  return JSON.parse(json)
 end
 
 # __main__
